@@ -1,6 +1,6 @@
 import streamlit as st
-from youtube_transcript_api import YouTubeTranscriptApi
 from google import genai
+from google.genai import types
 
 st.set_page_config(page_title="News Summarizer", page_icon="📰")
 
@@ -10,37 +10,29 @@ url = st.text_input("Paste YouTube Link:", placeholder="https://www.youtube.com/
 if st.button("Generate Summary"):
     if url:
         try:
-            with st.spinner("Extracting captions..."):
-                if "v=" in url:
-                    video_id = url.split("v=")[1].split("&")[0]
-                elif "youtu.be/" in url:
-                    video_id = url.split("youtu.be/")[1].split("?")[0]
-                else:
-                    st.error("Invalid YouTube URL.")
-                    st.stop()
-                
-                # UPDATED LINE: Using the new fetch() command
-                transcript_data = YouTubeTranscriptApi().fetch(video_id)
-                full_text = " ".join([segment['text'] for segment in transcript_data])
-            
-            with st.spinner("Writing WhatsApp summary..."):
+            with st.spinner("Analyzing YouTube video directly..."):
                 client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
                 
                 prompt = (
                     "Summarize this news report in 3 to 4 clear, punchy WhatsApp bullet points.\n"
-                    "Use *bold* for names/stats and 1-2 news emojis. No intro text.\n\n"
-                    f"Transcript:\n{full_text}"
+                    "Use *bold* for names/stats and 1-2 news emojis. No intro text."
                 )
                 
+                # Gemini natively extracts the video context directly from the URL
                 response = client.models.generate_content(
                     model="gemini-3.6-flash", 
-                    contents=prompt
+                    contents=types.Content(
+                        parts=[
+                            types.Part(file_data=types.FileData(file_uri=url)),
+                            types.Part(text=prompt)
+                        ]
+                    )
                 )
                 
                 st.success("Summary Generated!")
                 st.markdown(response.text)
 
         except Exception as e:
-            st.error(f"Could not process the video. Error details: {e}")
+            st.error(f"Error details: {e}")
     else:
         st.warning("Please enter a URL first.")
