@@ -11,7 +11,6 @@ if st.button("Generate Summary"):
     if url:
         try:
             with st.spinner("Extracting captions..."):
-                # 1. Isolate the video ID from the URL
                 if "v=" in url:
                     video_id = url.split("v=")[1].split("&")[0]
                 elif "youtu.be/" in url:
@@ -20,13 +19,11 @@ if st.button("Generate Summary"):
                     st.error("Invalid YouTube URL.")
                     st.stop()
                 
-                # 2. Fetch the transcript instantly
-                transcript_data = YouTubeTranscriptApi.get_transcript(video_id)
+                # UPDATED LINE: Using the new fetch() command
+                transcript_data = YouTubeTranscriptApi().fetch(video_id)
                 full_text = " ".join([segment['text'] for segment in transcript_data])
             
             with st.spinner("Writing WhatsApp summary..."):
-                # 3. Pass the text to Gemini
-                # The API key is securely pulled from Streamlit's hidden secrets
                 client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
                 
                 prompt = (
@@ -40,11 +37,10 @@ if st.button("Generate Summary"):
                     contents=prompt
                 )
                 
-                # 4. Display the final result
                 st.success("Summary Generated!")
                 st.markdown(response.text)
 
         except Exception as e:
-            st.error(f"Could not process the video. It may not have captions enabled. Error details: {e}")
+            st.error(f"Could not process the video. Error details: {e}")
     else:
         st.warning("Please enter a URL first.")
